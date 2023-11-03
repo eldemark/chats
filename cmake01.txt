@@ -1,0 +1,71 @@
+To make CMake find a library that you've built and 
+installed in a non-standard location (such as a sub-directory 
+in your home directory), you can use the following methods:
+
+Set the CMAKE_PREFIX_PATH:
+You can specify the directory where CMake should look for 
+the library using the CMAKE_PREFIX_PATH variable. When you 
+run CMake, set this variable to include the path to the 
+directory where your library is installed.
+
+For example, if you have installed the library in a sub-directory
+of your home directory called "mylib", you can set the 
+CMAKE_PREFIX_PATH like this:
+
+bash
+Copy code
+cmake -DCMAKE_PREFIX_PATH=~/mylib ..
+Make sure to replace ~/mylib with the actual path to your library
+installation directory.
+
+Modify the CMakeLists.txt file:
+If setting CMAKE_PREFIX_PATH doesn't work or you want a more permanent 
+solution, you can modify the CMakeLists.txt file of the project you are
+trying to build to include the path to your library. You can do this 
+by adding the following lines to the CMakeLists.txt file of the project:
+
+cmake
+Copy code
+set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} /path/to/your/library)
+find_package(your_library_name REQUIRED)
+Replace /path/to/your/library with the actual path to the directory 
+containing your library, and your_library_name with the name of the
+library you are trying to link with.
+
+Export CMake Configuration:
+If you have control over the library's CMake configuration, you can 
+make it export its own CMake configuration files. This will allow
+CMake to automatically find the library when you run it for your
+project. To do this, you can add the following lines to your 
+library's CMakeLists.txt file:
+
+cmake
+Copy code
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/YourLibraryConfigVersion.cmake"
+  VERSION 1.0
+  COMPATIBILITY AnyNewerVersion
+)
+
+export(
+  TARGETS your_library_name
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/YourLibraryTargets.cmake"
+)
+
+configure_package_config_file(
+  "YourLibraryConfig.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/YourLibraryConfig.cmake"
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/YourLibrary
+)
+
+install(
+  FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/YourLibraryConfig.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/YourLibraryConfigVersion.cmake"
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/YourLibrary
+)
+
+Then, in your project's CMakeLists.txt, you can simply use 
+find_package(YourLibrary) to locate the library without needing to
+specify the path manually.
