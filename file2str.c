@@ -95,3 +95,58 @@ int main() {
 
     return 0;
 }
+
+// Return the index of a header field.
+
+#include <stdio.h>
+#include <string.h>
+
+int findHeaderIndex(const char *fileContents, int startIndex, const char *headerName) {
+    const char *line = fileContents + startIndex;
+
+    // Iterate through the line to find the header
+    while (*line && (*line == ' ' || *line == '\t')) {
+        line++; // Skip leading whitespace
+    }
+
+    // Check if the headerName is present in the line
+    while (*line && *line != '\n') {
+        // Compare the headerName with the line
+        const char *header = headerName;
+        const char *linePtr = line;
+        while (*header && *linePtr && *header == *linePtr) {
+            header++;
+            linePtr++;
+        }
+
+        // If header is empty, that means a match was found
+        if (*header == '\0') {
+            return line - fileContents; // Return the index of the header
+        }
+
+        line++; // Move to the next character
+    }
+
+    // Header not found
+    return -1;
+}
+
+int main() {
+    const char *fileContents = "  # Commented line\nHeader1 Header2   Header3\nUncommented line";
+
+    int startIndex = findFirstUncommentedLine(fileContents);
+
+    if (startIndex != -1) {
+        int headerIndex = findHeaderIndex(fileContents, startIndex, "Header2");
+        if (headerIndex != -1) {
+            printf("Index of 'Header2': %d\n", headerIndex);
+        } else {
+            printf("Header 'Header2' not found.\n");
+        }
+    } else {
+        printf("No uncommented line found.\n");
+    }
+
+    return 0;
+}
+
