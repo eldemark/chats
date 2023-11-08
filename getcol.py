@@ -1,45 +1,46 @@
 import re
 
 def get_column_data(file_path, column_header):
-    header_indices = {}
-    data = []
-
     with open(file_path, 'r') as file:
-        # Read the file line by line
+        # Skip initial comments
+        line = file.readline()
+        while line.startswith('#'):
+            line = file.readline()
+        
+        # The line now contains headers; strip leading/trailing spaces
+        headers = line.strip().split()
+        
+        # Find the index of the column
+        try:
+            column_index = headers.index(column_header)
+        except ValueError:
+            return None, "Column not found"
+        
+        # Read the data
+        data = []
         for line in file:
-            # Skip comments
-            if line.startswith('#'):
+            if not line.strip() or line.startswith('#'):  # Skip empty lines and comments
                 continue
             
-            # Detect and process the headers row
-            if not header_indices:
-                headers = line.split()
-                end = 0
-                for header in headers:
-                    start = line.index(header, end)
-                    end = start + len(header)
-                    header_indices[header] = (start, end)
-                continue
-            
-            # Extract the column data
-            if column_header in header_indices:
-                start, end = header_indices[column_header]
-                value = line[start:end].strip()
-                # Skip if the value cannot be converted to float
-                if re.match(r'^-?\d+(?:\.\d+)?$', value):
-                    data.append(float(value))
-    
-    if not data and column_header not in header_indices:
-        return None, "Column not found"
-    
-    return data, None
+            # Split the line into columns based on fixed width
+            columns = re.findall(r'(\S+)', line)
+            try:
+                # Convert the string to a float and append to the data list
+                data.append(float(columns[column_index]))
+            except (ValueError, IndexError):
+                # Handle the case where conversion to float fails or index is out of range
+                return None, "Data conversion error or index out of range"
+        
+        return data, None  # Return the list of floats
 
 # Example usage:
-# Assuming 'data.txt' is your file and 'ColumnName' is the header of the column you want.
-column_data, error = get_column_data('data.txt', 'ColumnName')
+file_path = 'data.txt'
+column_header = 'hdr1'
+data, error = get_column_data(file_path, column_header)
 
-if error:
-    print(error)
+if data is not None:
+    print(f"Data for column '{column_header}':")
+    for value in data:
+        print(value)
 else:
-    print(column_data)
-
+    print(error)
