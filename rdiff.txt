@@ -1,0 +1,56 @@
+When rdiff-backup encounters an issue like this, it's often due to 
+it attempting to process a significant change in the 
+files/directories it is managing, such as a massive update in 
+metadata like user IDs. When you change the user IDs, 
+rdiff-backup sees this as a change to every single file 
+and thus tries to back them all up again. If the file count 
+is very high, it can lead to excessive memory usage and 
+potentially cause the issues you are facing.
+
+Here's a step-by-step approach to recover from this situation:
+
+Analyze the error: You mentioned that rdiff-backup now throws 
+a Python error. The first step is to look closely at the error 
+message. It may give you a clue as to what part of the backup 
+process is failing.
+
+Check for version compatibility: Ensure that the version of rdiff-backup 
+you are using is compatible with the Python version installed 
+on your system.
+
+Assess the session files: rdiff-backup keeps session files that 
+allow it to track the state of the backups. 
+It's possible these files have become corrupted or are 
+not being handled correctly after the user ID change.
+
+Try a smaller backup: As a test, try backing up a smaller subset of 
+the directories to see if the problem is with the specific files 
+or metadata changes.
+
+Incremental backup with --no-metadata flag: As a workaround, you could 
+try running rdiff-backup with the --no-metadata flag, which will 
+prevent it from backing up metadata like ownership. This isn't 
+ideal since it doesn't backup all data, but it could help 
+you to perform an incremental backup without errors.
+
+Increase verbosity: Increase the verbosity of rdiff-backup with the -v5 
+(or even -v9 for the most verbose output) option to get more detailed logs. 
+This might give more insight into where exactly it is failing.
+
+Cleanup: If there are any incomplete backups or sessions, you might need to 
+clean them up. Look for a rdiff-backup-data folder within the directory 
+you're backing up, and investigate the contents. There may be a 
+session file that is causing problems.
+
+Filesystem check: Ensure that there are no underlying filesystem issues. 
+You can run fsck on unmounted filesystems to check for and repair 
+filesystem corruption.
+
+Rebuild the repository: If nothing else works and you have the space, 
+you might consider starting a new backup repository from scratch after 
+such a major change. This would avoid rdiff-backup having to 
+reconcile the user ID changes.
+
+Alternative tools: If rdiff-backup continues to cause problems, you might 
+look into using a different tool for backups that can handle massive 
+metadata changes more gracefully.
