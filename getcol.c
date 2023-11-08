@@ -30,8 +30,6 @@ char* trimwhitespace(char *str) {
 // Function to find a column by its header name and return its data as doubles
 int get_column_data(const char *file_path, const char *column_header, double *data, int *data_size) {
     char line[MAX_LINE_LENGTH];
-    char headers[MAX_COLUMNS][MAX_HEADER_NAME_LENGTH];
-    int column_indices[MAX_COLUMNS] = {0};
     int column = -1;
     int data_index = 0;
 
@@ -41,17 +39,27 @@ int get_column_data(const char *file_path, const char *column_header, double *da
         return -1;
     }
 
-    // Read the headers line and store the column indices
-    if (fgets(line, MAX_LINE_LENGTH, file) != NULL) {
-        int index = 0;
-        char *token = strtok(line, " \t");
-        while (token != NULL && index < MAX_COLUMNS) {
-            strcpy(headers[index], trimwhitespace(token));
-            if (strcmp(headers[index], column_header) == 0) {
-                column = index;
-            }
-            token = strtok(NULL, " \t");
-            ++index;
+    // Skip comments at the beginning
+    while (fgets(line, sizeof(line), file)) {
+        if (line[0] != '#') {
+            break;
+        }
+    }
+
+    // Now 'line' contains the headers
+    char *headers[MAX_COLUMNS];
+    char *token = strtok(line, " \t");
+    int index = 0;
+    while (token && index < MAX_COLUMNS) {
+        headers[index++] = trimwhitespace(token);
+        token = strtok(NULL, " \t");
+    }
+
+    // Find the index of the column
+    for (int i = 0; i < index; i++) {
+        if (strcmp(headers[i], column_header) == 0) {
+            column = i;
+            break;
         }
     }
 
@@ -67,9 +75,10 @@ int get_column_data(const char *file_path, const char *column_header, double *da
             continue;
         }
         
-        int index = 0;
-        char *token = strtok(line, " \t");
-        while (token != NULL && index < MAX_COLUMNS) {
+        // Extract the column data
+        token = strtok(line, " \t");
+        index = 0;
+        while (token != NULL) {
             if (index == column) {
                 data[data_index++] = strtod(trimwhitespace(token), NULL);
                 break;
@@ -86,9 +95,9 @@ int get_column_data(const char *file_path, const char *column_header, double *da
 
 int main() {
     const char *filename = "data.txt"; // Replace with your file path
-    const char *column_header = "ColumnName"; // Replace with your column header
+    const char *column_header = "hdr1"; // Replace with your column header
     double data[MAX_LINE_LENGTH]; // Replace MAX_LINE_LENGTH with your expected number of data points
-    int data_size;
+    int data_size = 0;
 
     int result = get_column_data(filename, column_header, data, &data_size);
     if (result == -1) {
