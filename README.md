@@ -1,2 +1,2 @@
 # chats
-"Programming" with ChatGPT3/4
+Programming with ChatGPT3/4
