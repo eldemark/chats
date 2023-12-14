@@ -1,4 +1,7 @@
 
+# Absolute error, relative error, RMSE, MAE,
+# maximum error, histogram of errors
+
 def calculate_relative_error(data1, data2):
     """
     Calculate the relative error between two datasets. Relative error is 
