@@ -1,0 +1,32 @@
+Indentation: YAML uses indentation to represent the structure of data. This indentation must be consistent and typically involves spaces (not tabs).
+
+Key-Value Pairs: Data is often expressed in key-value pairs, with a colon followed by a space separating the key and the value.
+
+Lists: Lists are represented with dashes (-), with each item in the list placed on a new line and indented to align with the first character after the dash.
+
+Dictionaries or Maps: A dictionary or map structure is a collection of key-value pairs. In YAML, dictionaries are represented by listing key-value pairs.
+
+Comments: Comments begin with a # and continue to the end of the line.
+
+Scalars: Scalars are single values, and in YAML, they can be strings, numbers, or Booleans. Strings can be in double or single quotes, or without quotes if they don't contain special characters.
+
+Multiline Strings: YAML supports multiline strings. The | character allows you to keep line breaks as is, while > folds the new lines.
+
+Anchors and Aliases: YAML supports creating anchors (&) and using aliases (*) to avoid repetition and create references.
+
+Data Types: YAML automatically detects data types, but you can explicitly specify the type (like !!int or !!str).
+
+
+# Sample YAML file
+name: John Doe
+age: 30
+married: true
+children:
+  - name: Jane
+    age: 10
+  - name: Joe
+    age: 8
+address:
+  street: 123 Main St
+  city: Anytown
+  zip: 12345
