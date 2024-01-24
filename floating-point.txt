@@ -1,4 +1,6 @@
 
+Between March 13, 2012 (gcc 4.4.7), and May 14, 2021 (gcc 8.5.0), there were no major updates to the IEEE 754 floating-point standard. The most recent version of this standard before 2021 was IEEE 754-2008, which was approved in August 2008. This version introduced several key updates from the previous 1985 standard, including decimal floating-point formats and additional operations. However, there were no new versions or major updates to IEEE 754 between 2012 and early 2021. IEEE standards are typically reviewed every five years, but revisions are made only if necessary and based on consensus among the participating stakeholders.
+
 Compiler Optimizations: Different versions may have different optimization strategies. Newer versions often have more advanced optimizations that can change how certain calculations are performed. This can result in differences in floating-point operations, rounding, or handling of numerical precision.
 
 Default Settings and Flags: Compiler versions may have different default settings, including how they handle floating-point arithmetic, optimization levels, and treatment of specific language features. If specific flags or settings were not explicitly set during compilation, the defaults for each version could lead to differences in the executable.
