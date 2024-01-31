@@ -1,0 +1,41 @@
+1. ldd
+While ldd doesn't trace the program execution, it's useful for listing the shared libraries (.so files) that an executable is linked against before the program runs. This can give you a starting point for understanding which shared libraries are expected to be used.
+
+$ ldd /path/to/your/executable
+
+2. strace
+strace is a powerful tool that can trace system calls and signals. While it's not specific to .so files or high-level function calls, it can show you when .so files are loaded with the open system call, among many other things.
+
+$ strace ./your_application
+
+To filter for specific actions, such as open calls, you can use grep:
+
+$ strace ./your_application 2>&1 | grep open
+
+3. ltrace
+ltrace is similar to strace but is more focused on tracing library calls (including those from .so files) as well as system calls. It can show you which functions are being called from dynamically linked libraries.
+
+$ ltrace ./your_application
+
+4. perf
+perf is a powerful performance analyzing tool that can, among other things, trace function calls and provide insights into which functions are being called and how often. It's particularly useful for performance analysis but can also give you a view of the call graph of your application.
+
+$ perf record -g ./your_application
+$ perf report
+
+5. GDB
+The GNU Debugger (GDB) can be used to debug your application and inspect which .so files are loaded and which functions are called. You can set breakpoints, inspect variables, and step through the code line by line.
+
+To start your application with GDB:
+
+$ gdb ./your_application
+
+Then, you can use various GDB commands to inspect the state of your application, such as info sharedlibrary to see loaded shared libraries or break to set breakpoints on functions.
+
+6. nm and objdump
+While not tracing tools, nm and objdump can be used to inspect the symbols (functions, variables, etc.) defined and referenced within .so files, which can be helpful when trying to understand the dependencies of your application.
+
+$ nm -D /path/to/library.so
+$ objdump -T /path/to/library.so
+
+Each of these tools serves slightly different purposes and provides different levels of detail. Depending on your specific needs (whether you're debugging, performing a detailed analysis of library usage, or optimizing performance), you might find one or a combination of these tools particularly useful.
