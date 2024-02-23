@@ -39,3 +39,9 @@ close $in_fh;
 close $out_fh;
 
 print "Processing complete. New data written to '$output_file'.\n";
+
+# push @array, $value1, $value2, ..., $valueN;
+
+my @fruits = ('apple', 'banana');
+push @fruits, 'orange', 'grape', 'mango';
+
