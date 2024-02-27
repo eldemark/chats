@@ -1,0 +1,57 @@
+valgrind: Tools like valgrind or compilers with sanitizers 
+(e.g., -fsanitize=float-divide-by-zero, -fsanitize=float-cast-overflow) 
+might help identify undefined behaviors or edge cases that behave 
+differently across library versions.
+
+1. ldd
+While ldd does not trace library calls at runtime, it's useful for listing the shared libraries an 
+executable is linked against. This can be a good starting point to understand which libraries your 
+application depends on before you begin tracing actual calls.
+
+bash
+ldd /path/to/your/executable
+
+2. ltrace
+ltrace is a program that intercepts and records dynamic library calls made by an executable. 
+It can trace calls to functions within shared libraries, including system libraries like libm,
+and can show the parameters passed to each function and the return value from the functions.
+
+bash
+ltrace -o output.txt /path/to/your/executable
+
+The -o output.txt option writes the trace output to output.txt, making it easier to analyze.
+
+3. strace
+strace is similar to ltrace but focuses on system calls made by a program. While strace is more 
+about interactions with the kernel rather than library calls, it can still provide context on 
+how an application is executing, especially regarding file, network, and device interactions.
+
+bash
+strace -o output.txt /path/to/your/executable
+
+4. gdb
+The GNU Debugger (gdb) can also be used to trace library calls by setting breakpoints on 
+specific functions. This requires a more hands-on approach and possibly access to the 
+source code or knowledge of the library's API.
+
+bash
+gdb /path/to/your/executable
+
+Within gdb, you can set breakpoints on functions and run the program, inspecting the 
+call stack and function arguments as it hits those breakpoints.
+
+5. perf
+perf is a performance analyzing tool in Linux, capable of a wide range of monitoring, 
+including function calls. Using perf to capture call graphs can help identify which 
+library functions are being called and how often, although it's more commonly used 
+for performance analysis rather than detailed function call tracing.
+
+bash
+perf record -g /path/to/your/executable
+perf report
+
+6. System-specific tracing tools
+Some systems have their specific tracing tools (like DTrace on Solaris and derivatives,
+or SystemTap on Linux) that can be used to instrument and trace library calls in great 
+detail.
+
