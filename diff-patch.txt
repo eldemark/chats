@@ -1,0 +1,19 @@
+
+Create the patch:
+
+  $ diff -urN original_code modified_code > changes.patch
+
+-u produces a unified diff which is easier to 
+   read and is commonly used for creating patches.
+-r tells diff to recursively compare any subdirectories found.
+-N treats absent files as empty, which is useful for new 
+   files added to the modified_code directory.
+
+Do this in the unmodified project root directory:
+
+  $ patch -p1 < changes.patch
+
+Revert changes:
+
+  $ patch -p1 -R < changes.patch
+
