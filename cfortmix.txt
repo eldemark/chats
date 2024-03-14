@@ -1,0 +1,30 @@
+
+To call Fortran functions from C++, you need to ensure that 
+the C++ compiler can correctly link to the Fortran 
+function names. Here’s how you can handle this:
+
+Use extern "C" in C++: This tells the C++ compiler 
+not to mangle the name of the enclosed function, 
+making it possible to link with functions compiled 
+by other languages like Fortran.
+
+Match the Fortran Naming Convention: Determine how your 
+Fortran compiler modifies function names (e.g., lowercase, 
+appending underscores) and use the modified name 
+within extern "C".
+
+! In Fortran
+subroutine say_hello_fortran()
+    print *, 'Hello from Fortran'
+end subroutine say_hello_fortran
+
+// In C++
+extern "C" {
+    void say_hello_fortran_(); // Note the underscore to match the Fortran naming
+}
+
+int main() {
+    say_hello_fortran_(); // Call the Fortran function
+    return 0;
+}
+
