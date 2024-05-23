@@ -1,0 +1,274 @@
+To set up a Linux network using RHEL 8 where one server handles user authentication and around 50 client machines each with separate local home directories, you can use LDAP for authentication and configure the clients accordingly. Here’s a step-by-step guide to achieve this:
+
+1. Set Up the LDAP Server
+Install and Configure LDAP Server
+Install necessary packages:
+
+bash
+Copy code
+sudo dnf install -y openldap-servers openldap-clients
+Start and enable the LDAP server:
+
+bash
+Copy code
+sudo systemctl start slapd
+sudo systemctl enable slapd
+Set the LDAP admin password:
+Generate a hashed password:
+
+bash
+Copy code
+slappasswd
+Note down the hashed password.
+
+Configure the LDAP database:
+Edit /etc/openldap/slapd.d/cn=config/olcDatabase={2}hdb.ldif (or similar, depending on your configuration):
+
+bash
+Copy code
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcSuffix
+olcSuffix: dc=example,dc=com
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcRootDN
+olcRootDN: cn=Manager,dc=example,dc=com
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+add: olcRootPW
+olcRootPW: <hashed_password>
+Add base LDAP entries:
+Create a file base.ldif:
+
+ldif
+Copy code
+dn: dc=example,dc=com
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+o: Example Organization
+dc: example
+
+dn: cn=Manager,dc=example,dc=com
+objectClass: organizationalRole
+cn: Manager
+description: Directory Manager
+Add the entries:
+
+bash
+Copy code
+ldapadd -x -D "cn=Manager,dc=example,dc=com" -W -f base.ldif
+Create User Entries in LDAP
+Create user entries:
+Create a file users.ldif:
+
+ldif
+Copy code
+dn: uid=john,ou=People,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: john
+sn: Doe
+givenName: John
+cn: John Doe
+displayName: John Doe
+uidNumber: 1001
+gidNumber: 1001
+userPassword: {SSHA}hashed_password
+gecos: John Doe
+loginShell: /bin/bash
+homeDirectory: /home/john
+Add the user entry:
+
+bash
+Copy code
+ldapadd -x -D "cn=Manager,dc=example,dc=com" -W -f users.ldif
+2. Configure LDAP Client Machines
+Install Necessary Packages
+On each client machine, install the necessary packages:
+
+bash
+Copy code
+sudo dnf install -y nss-pam-ldapd authconfig
+Configure LDAP Authentication
+Use authconfig to set up LDAP:
+
+bash
+Copy code
+sudo authconfig --enableldap --enableldapauth --ldapserver=ldap://<ldap_server_ip> --ldapbasedn="dc=example,dc=com" --enablemkhomedir --update
+Configure SSSD for authentication (if preferred):
+Install SSSD:
+
+bash
+Copy code
+sudo dnf install -y sssd
+Edit /etc/sssd/sssd.conf:
+
+ini
+Copy code
+[sssd]
+config_file_version = 2
+services = nss, pam
+domains = LDAP
+
+[domain/LDAP]
+id_provider = ldap
+auth_provider = ldap
+ldap_uri = ldap://<ldap_server_ip>
+ldap_search_base = dc=example,dc=com
+ldap_default_bind_dn = cn=Manager,dc=example,dc=com
+ldap_default_authtok = <ldap_manager_password>
+ldap_tls_reqcert = never
+Set permissions and start SSSD:
+
+bash
+Copy code
+sudo chmod 600 /etc/sssd/sssd.conf
+sudo systemctl start sssd
+sudo systemctl enable sssd
+3. Create Local Home Directories
+Ensure that the pam_mkhomedir module is enabled to create local home directories automatically upon the first login.
+
+Edit PAM configuration:
+Add the following line to /etc/pam.d/system-auth and /etc/pam.d/password-auth:
+bash
+Copy code
+session optional pam_mkhomedir.so skel=/etc/skel/ umask=0077
+4. Testing
+Restart necessary services:
+
+bash
+Copy code
+sudo systemctl restart sssd
+sudo systemctl restart nslcd
+Log in as an LDAP user on a client machine:
+
+bash
+Copy code
+ssh john@<client_machine_ip>
+This should create a local home directory for the user john on the client machine.
+
+Conclusion
+By following these steps, you should have a network where a central LDAP server handles user authentication, and each client machine maintains separate local home directories for the users. Make sure to replace placeholders (e.g., example.com, ldap_server_ip, <ldap_manager_password>) with your actual values.
+
+Does anything change if the computers are set up with FIPS enabled?
+ChatGPT
+Enabling FIPS (Federal Information Processing Standard) mode in RHEL 8 ensures that only FIPS-validated cryptographic algorithms are used, which impacts various system components and services, including LDAP. Here's how to set up your network with FIPS enabled:
+
+1. Enabling FIPS Mode
+First, enable FIPS mode on both the LDAP server and the client machines:
+
+Enable FIPS mode:
+
+bash
+Copy code
+sudo fips-mode-setup --enable
+Reboot the system:
+
+bash
+Copy code
+sudo reboot
+2. Configure the LDAP Server in FIPS Mode
+Ensure that the LDAP server is configured to use FIPS-compliant algorithms.
+
+Update OpenLDAP Configuration
+Install OpenLDAP if not already installed:
+
+bash
+Copy code
+sudo dnf install -y openldap-servers openldap-clients
+Edit the OpenLDAP configuration to use FIPS-compliant algorithms:
+Modify /etc/openldap/slapd.d/cn=config.ldif to ensure it is using a FIPS-compliant hashing algorithm, like SHA-256, for passwords:
+
+ldif
+Copy code
+dn: cn=config
+changetype: modify
+replace: olcPasswordHash
+olcPasswordHash: {SSHA256}
+Ensure TLS settings in LDAP use FIPS-compliant ciphers:
+Edit /etc/openldap/slapd.d/cn=config.ldif to specify FIPS-compliant ciphers:
+
+ldif
+Copy code
+dn: cn=config
+changetype: modify
+add: olcTLSCipherSuite
+olcTLSCipherSuite: HIGH:!aNULL:!eNULL
+Restart the LDAP server:
+
+bash
+Copy code
+sudo systemctl restart slapd
+3. Configure LDAP Client Machines in FIPS Mode
+Ensure that the client machines are configured to interact with the LDAP server using FIPS-compliant settings.
+
+Update SSSD Configuration
+Install necessary packages:
+
+bash
+Copy code
+sudo dnf install -y sssd authconfig
+Configure LDAP authentication using authconfig:
+
+bash
+Copy code
+sudo authconfig --enableldap --enableldapauth --ldapserver=ldap://<ldap_server_ip> --ldapbasedn="dc=example,dc=com" --update
+Configure SSSD for FIPS mode:
+Edit /etc/sssd/sssd.conf:
+
+ini
+Copy code
+[sssd]
+config_file_version = 2
+services = nss, pam
+domains = LDAP
+
+[domain/LDAP]
+id_provider = ldap
+auth_provider = ldap
+ldap_uri = ldap://<ldap_server_ip>
+ldap_search_base = dc=example,dc=com
+ldap_default_bind_dn = cn=Manager,dc=example,dc=com
+ldap_default_authtok = <ldap_manager_password>
+ldap_id_use_start_tls = true
+ldap_tls_cacertdir = /etc/openldap/certs
+ldap_tls_reqcert = demand
+ldap_tls_cipher_suite = HIGH:!aNULL:!eNULL
+Set permissions and restart SSSD:
+
+bash
+Copy code
+sudo chmod 600 /etc/sssd/sssd.conf
+sudo systemctl restart sssd
+sudo systemctl enable sssd
+4. Configure PAM and Home Directories in FIPS Mode
+Ensure pam_mkhomedir module is enabled:
+Edit /etc/pam.d/system-auth and /etc/pam.d/password-auth to include:
+
+bash
+Copy code
+session optional pam_mkhomedir.so skel=/etc/skel/ umask=0077
+Verify PAM configuration is FIPS-compliant:
+Ensure that PAM uses FIPS-compliant modules and settings.
+
+5. Testing
+Restart necessary services:
+
+bash
+Copy code
+sudo systemctl restart sssd
+sudo systemctl restart nslcd
+Log in as an LDAP user on a client machine:
+
+bash
+Copy code
+ssh john@<client_machine_ip>
+This should create a local home directory for the user john on the client machine and ensure all cryptographic operations are FIPS-compliant.
+
+Conclusion
+By enabling FIPS mode and ensuring all cryptographic operations and configurations comply with FIPS standards, you can secure your LDAP-based authentication system. Make sure to replace placeholders with actual values and verify that all components (OpenLDAP, SSSD, PAM) are properly configured for FIPS compliance.
