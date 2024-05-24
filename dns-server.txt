@@ -1,0 +1,137 @@
+Setting up a DNS server on your RHEL 9 server involves several steps. You'll need to install and configure BIND (Berkeley Internet Name Domain), which is a widely used DNS server software. Here’s a step-by-step guide:
+
+Step 1: Install BIND
+Install the BIND packages:
+
+sh
+Copy code
+sudo dnf install bind bind-utils
+Enable and start the BIND service:
+
+sh
+Copy code
+sudo systemctl enable named
+sudo systemctl start named
+Check the status of the BIND service to ensure it's running:
+
+sh
+Copy code
+sudo systemctl status named
+Step 2: Configure BIND
+Edit the main BIND configuration file:
+
+sh
+Copy code
+sudo nano /etc/named.conf
+Configure the named.conf file:
+
+Modify the options block to allow queries from your network:
+sh
+Copy code
+options {
+    listen-on port 53 { 127.0.0.1; 192.168.1.10; }; // Add your server's IP address
+    allow-query { localhost; 192.168.1.0/24; }; // Allow queries from your subnet
+    directory "/var/named";
+    dump-file "/var/named/data/cache_dump.db";
+    statistics-file "/var/named/data/named_stats.txt";
+    memstatistics-file "/var/named/data/named_mem_stats.txt";
+    recursing-file "/var/named/data/named.recursing";
+    secroots-file "/var/named/data/named.secroots";
+    allow-transfer { localhost; }; // Only allow transfer to localhost
+};
+Define your DNS zone:
+
+Add a zone block for your network at the end of the named.conf file:
+sh
+Copy code
+zone "example.com" IN {
+    type master;
+    file "example.com.zone";
+    allow-update { none; };
+};
+
+zone "1.168.192.in-addr.arpa" IN {
+    type master;
+    file "1.168.192.rev";
+    allow-update { none; };
+};
+Step 3: Create Zone Files
+Create the forward zone file:
+
+sh
+Copy code
+sudo nano /var/named/example.com.zone
+Add the following configuration:
+sh
+Copy code
+$TTL 86400
+@   IN  SOA     ns1.example.com. root.example.com. (
+                              2024052401  ; Serial
+                              3600        ; Refresh
+                              1800        ; Retry
+                              604800      ; Expire
+                              86400 )     ; Minimum TTL
+;
+@       IN  NS      ns1.example.com.
+ns1     IN  A       192.168.1.10
+server  IN  A       192.168.1.10
+client1 IN  A       192.168.1.11
+client2 IN  A       192.168.1.12
+client3 IN  A       192.168.1.13
+Create the reverse zone file:
+
+sh
+Copy code
+sudo nano /var/named/1.168.192.rev
+Add the following configuration:
+sh
+Copy code
+$TTL 86400
+@   IN  SOA     ns1.example.com. root.example.com. (
+                              2024052401  ; Serial
+                              3600        ; Refresh
+                              1800        ; Retry
+                              604800      ; Expire
+                              86400 )     ; Minimum TTL
+;
+@       IN  NS      ns1.example.com.
+10      IN  PTR     ns1.example.com.
+10      IN  PTR     server.example.com.
+11      IN  PTR     client1.example.com.
+12      IN  PTR     client2.example.com.
+13      IN  PTR     client3.example.com.
+Step 4: Configure SELinux and Firewall
+Configure SELinux to allow BIND:
+
+sh
+Copy code
+sudo setsebool -P named_write_master_zones 1
+Open the DNS port in the firewall:
+
+sh
+Copy code
+sudo firewall-cmd --add-service=dns --permanent
+sudo firewall-cmd --reload
+Step 5: Test the Configuration
+Check the configuration for syntax errors:
+
+sh
+Copy code
+sudo named-checkconf
+sudo named-checkzone example.com /var/named/example.com.zone
+sudo named-checkzone 1.168.192.in-addr.arpa /var/named/1.168.192.rev
+Restart the BIND service:
+
+sh
+Copy code
+sudo systemctl restart named
+Test the DNS resolution from a client machine:
+
+Configure the client machines to use the RHEL server as their DNS server. For example, set the DNS server to 192.168.1.10 in the network settings.
+Test the resolution:
+sh
+Copy code
+nslookup client1.example.com
+nslookup 192.168.1.11
+ssh client1@example.com
+By following these steps, you should have a working DNS server that allows you to use hostnames for SSH and other network services.
