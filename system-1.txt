@@ -1,0 +1,80 @@
+To set up this isolated, air-gapped network of computers running RHEL 9, with the specified features, follow these steps:
+
+Hardware and Network Setup
+Authentication Server:
+
+A machine dedicated to authentication (can also serve as an NFS server for home directories).
+Install and configure OpenLDAP or FreeIPA for authentication.
+File Server:
+
+A machine dedicated to serving files, ideally with NFS (Network File System) for easy access to home directories.
+Ensure this server has ample storage for the user data.
+Client Machines:
+
+50 client machines, each running RHEL 9.
+Network Infrastructure:
+
+Use a network switch to connect all machines.
+Ensure proper cabling and network configuration (e.g., static IPs).
+Software Setup
+Install RHEL 9:
+
+Install RHEL 9 on all machines.
+During installation, configure networking with static IP addresses.
+Set Up Authentication Server:
+
+OpenLDAP:
+bash
+Copy code
+sudo dnf install -y openldap-servers openldap-clients
+sudo systemctl enable --now slapd
+sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/cosine.ldif
+sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/nis.ldif
+sudo ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/inetorgperson.ldif
+FreeIPA:
+bash
+Copy code
+sudo dnf install -y ipa-server
+sudo ipa-server-install
+Configure NFS for Home Directories:
+
+On the file server:
+bash
+Copy code
+sudo dnf install -y nfs-utils
+sudo mkdir -p /export/home
+sudo chown nobody:nobody /export/home
+sudo chmod 777 /export/home
+echo "/export/home  *(rw,sync,no_root_squash,no_subtree_check)" | sudo tee /etc/exports
+sudo exportfs -a
+sudo systemctl enable --now nfs-server
+On each client machine:
+bash
+Copy code
+sudo dnf install -y nfs-utils
+sudo mkdir -p /home
+echo "fileserver:/export/home /home nfs defaults 0 0" | sudo tee -a /etc/fstab
+sudo mount -a
+Set Up Password-less SSH:
+
+Generate SSH keys on all client machines and copy the public key to each machine:
+bash
+Copy code
+ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
+for i in {1..50}; do ssh-copy-id -i ~/.ssh/id_rsa.pub user@client$i; done
+Configure Centralized Authentication:
+
+On each client machine, configure PAM (Pluggable Authentication Modules) and NSS (Name Service Switch) to use LDAP or FreeIPA:
+bash
+Copy code
+sudo authconfig --enableldap --enableldapauth --ldapserver=ldapserver --ldapbasedn="dc=example,dc=com" --enablemkhomedir --update
+Test and Verify:
+
+Ensure each client machine can authenticate against the LDAP or FreeIPA server.
+Verify that home directories are properly mounted via NFS.
+Test SSH access between all client machines to ensure password-less login is working.
+Security Considerations
+Ensure all machines are in a physically secure location.
+Regularly back up the authentication and file servers.
+Monitor logs for any unusual activity, given the air-gapped nature of the network.
+By following these steps, you will have a fully functional, isolated network meeting all specified requirements.
