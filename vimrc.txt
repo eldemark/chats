@@ -1,0 +1,42 @@
+" Enable line numbers
+set number
+
+" Set dark background
+" set background=dark
+
+" Enable syntax highlighting
+syntax on
+
+" Define colors for dark background
+highlight Normal ctermfg=white ctermbg=black
+highlight LineNr ctermfg=darkgray
+
+" Customize color scheme (Optional)
+colorscheme elflord
+" default - The default color scheme.
+" blue - A color scheme with blue tones.
+" darkblue - A darker blue color scheme.
+" delek - A color scheme with light background.
+" elflord - A colorful dark background scheme.
+" evening - A dark color scheme with a relaxed feel.
+" koehler - A dark background color scheme.
+" morning - A light background color scheme.
+" murphy - Another dark background color scheme.
+" pablo - A dark background color scheme with good contrast.
+" peachpuff - A light background color scheme.
+" ron - A dark color scheme.
+" shine - A light background color scheme.
+" slate - A dark background color scheme.
+" torte - A light background color scheme.
+" zellner - A dark background color scheme.
+
+" Other common settings (Optional)
+set tabstop=4
+set shiftwidth=4
+set expandtab
+set autoindent
+set smartindent
+set relativenumber
+
+" Enable mouse support
+set mouse=a
