@@ -1,0 +1,464 @@
+Setting up a small test network with AlmaLinux 9, FreeIPA for authentication, and local repositories requires several steps. Below is a detailed guide to achieve this:
+
+Prerequisites:
+Three computers with AlmaLinux 9 installed.
+Local repositories for BaseOS, AppStream, and EPEL available on the server.
+Static IP addresses assigned as follows:
+Server: 10.10.10.25
+Client 1: 10.10.10.26
+Client 2: 10.10.10.27
+Step 1: Set Up Local Repositories
+On the server (10.10.10.25):
+Ensure that the local repositories for BaseOS, AppStream, and EPEL are correctly set up and accessible.
+
+Create repository files in /etc/yum.repos.d/:
+
+sh
+Copy code
+# BaseOS
+[BaseOS]
+name=BaseOS
+baseurl=file:///path/to/BaseOS
+enabled=1
+gpgcheck=0
+
+# AppStream
+[AppStream]
+name=AppStream
+baseurl=file:///path/to/AppStream
+enabled=1
+gpgcheck=0
+
+# EPEL
+[epel]
+name=EPEL
+baseurl=file:///path/to/epel
+enabled=1
+gpgcheck=0
+Replace /path/to/ with the actual paths where the repositories are located.
+
+Step 2: Install and Configure FreeIPA on the Server
+Install FreeIPA server:
+
+sh
+Copy code
+sudo dnf install freeipa-server
+Set up FreeIPA server:
+
+sh
+Copy code
+sudo ipa-server-install --setup-dns --no-forwarders
+Follow the prompts to configure your domain and realm (e.g., domain: example.com, realm: EXAMPLE.COM).
+
+Create users and groups:
+
+sh
+Copy code
+sudo ipa user-add jones --first=John --last=Jones --password
+sudo ipa user-add smith --first=Jane --last=Smith --password
+sudo ipa group-add users
+sudo ipa group-add-member users --users=jones,smith
+Step 3: Configure Clients to Use FreeIPA
+On each client (10.10.10.26 and 10.10.10.27):
+
+Install FreeIPA client:
+
+sh
+Copy code
+sudo dnf install freeipa-client
+Configure FreeIPA client:
+
+sh
+Copy code
+sudo ipa-client-install --mkhomedir
+Follow the prompts to join the client to the FreeIPA domain (e.g., domain: example.com, realm: EXAMPLE.COM). Provide the necessary admin credentials when prompted.
+
+Step 4: Verify Configuration
+On the server and clients:
+
+Check FreeIPA services:
+
+sh
+Copy code
+sudo systemctl status ipa
+Verify user authentication:
+
+sh
+Copy code
+su - jones
+su - smith
+Both users should be able to log in and have their home directories automatically created.
+
+Step 5: Configure Static IP Addresses
+On each system (server and clients):
+
+Edit the network configuration files:
+
+sh
+Copy code
+sudo nmcli connection modify ensXXX ipv4.addresses 10.10.10.25/24 ipv4.method manual
+sudo nmcli connection modify ensXXX ipv4.gateway 10.10.10.1
+sudo nmcli connection modify ensXXX ipv4.dns 10.10.10.25
+sudo nmcli connection up ensXXX
+Replace ensXXX with your actual network interface name and the appropriate IP addresses for each system.
+
+Step 6: Ensure Local Repository Access on Clients
+On each client (10.10.10.26 and 10.10.10.27):
+
+Create repository files in /etc/yum.repos.d/ pointing to the server's repositories:
+
+sh
+Copy code
+# BaseOS
+[BaseOS]
+name=BaseOS
+baseurl=http://10.10.10.25/path/to/BaseOS
+enabled=1
+gpgcheck=0
+
+# AppStream
+[AppStream]
+name=AppStream
+baseurl=http://10.10.10.25/path/to/AppStream
+enabled=1
+gpgcheck=0
+
+# EPEL
+[epel]
+name=EPEL
+baseurl=http://10.10.10.25/path/to/epel
+enabled=1
+gpgcheck=0
+Ensure the HTTP server on the repository server is configured and running to serve the repository content.
+
+Final Steps
+Reboot each system to ensure all configurations are applied.
+Test connectivity and authentication between the server and clients.
+Ensure all necessary ports are open and accessible for FreeIPA and repository access.
+This setup will give you a small test network with centralized authentication and local package repositories, allowing users jones and smith to authenticate on any of the three systems.
+
+"Follow the prompts to configure your domain and realm (e.g., domain: example.com, realm: EXAMPLE.COM)." I don't quite understand this. This is an isolated network, and there's no associated URL or website that would be addressable as a ".com".
+ChatGPT
+For an isolated network without internet access, you can use a domain name that doesn't resolve to any external URL. In your case, you can use a custom, local domain name for the FreeIPA setup. Here's a more detailed explanation and example for setting up FreeIPA in an air-gapped environment:
+
+Setting Up FreeIPA Server
+Install FreeIPA server on the server (10.10.10.25):
+
+sh
+Copy code
+sudo dnf install freeipa-server
+Set up FreeIPA server:
+
+When running the ipa-server-install command, you will need to provide domain and realm information. For an isolated network, you can use a domain like localdomain and a corresponding realm like LOCALDOMAIN. Here's how you can do it:
+
+sh
+Copy code
+sudo ipa-server-install --setup-dns --no-forwarders --domain=localdomain --realm=LOCALDOMAIN
+During the installation, you'll be prompted for additional details such as the server hostname, admin password, and Directory Manager password. Provide the necessary information as required.
+
+Example of the Installation Process:
+Hostname:
+Make sure your server has a fully qualified domain name (FQDN). You can set this by editing /etc/hostname and /etc/hosts.
+
+sh
+Copy code
+sudo hostnamectl set-hostname ipa-server.localdomain
+Update /etc/hosts:
+
+sh
+Copy code
+10.10.10.25 ipa-server.localdomain ipa-server
+Run the Installation Command:
+
+sh
+Copy code
+sudo ipa-server-install --setup-dns --no-forwarders --domain=localdomain --realm=LOCALDOMAIN
+During the installation, you will see prompts like the following:
+
+less
+Copy code
+Server host name [ipa-server.localdomain]: 
+Please confirm the domain name [localdomain]: 
+Please provide a realm name [LOCALDOMAIN]: 
+Directory Manager (existing master) password: **********
+IPA admin password: **********
+Follow the prompts and provide the necessary details.
+
+Setting Up FreeIPA Clients
+Install FreeIPA client on each client (10.10.10.26 and 10.10.10.27):
+
+sh
+Copy code
+sudo dnf install freeipa-client
+Configure FreeIPA client:
+
+sh
+Copy code
+sudo ipa-client-install --domain=localdomain --realm=LOCALDOMAIN --server=ipa-server.localdomain --mkhomedir
+Follow the prompts and provide the necessary details. You will need to provide admin credentials during this process.
+
+Creating Users and Groups on FreeIPA Server
+Add users and groups on the server:
+
+sh
+Copy code
+sudo ipa user-add jones --first=John --last=Jones --password
+sudo ipa user-add smith --first=Jane --last=Smith --password
+sudo ipa group-add users
+sudo ipa group-add-member users --users=jones,smith
+Verify Configuration
+On the server and clients:
+
+Check FreeIPA services:
+
+sh
+Copy code
+sudo systemctl status ipa
+Verify user authentication:
+
+sh
+Copy code
+su - jones
+su - smith
+Both users should be able to log in and have their home directories automatically created.
+
+Summary
+Use a custom local domain (localdomain) and realm (LOCALDOMAIN) for your isolated network.
+Set up the hostname and /etc/hosts file correctly to reflect your local domain.
+Follow the steps to install and configure FreeIPA server and clients with the local domain.
+Create users and groups, and verify the setup.
+This approach ensures your FreeIPA setup works correctly within an isolated network without requiring an external URL or domain.
+
+How do I set up http on the server to allow access to the repositories?
+ChatGPT
+To set up an HTTP server on the server (10.10.10.25) to serve the local repositories, you can use Apache HTTP Server (httpd). Below are the steps to install and configure httpd to serve the repositories.
+
+Step-by-Step Guide to Set Up HTTP Server
+Install Apache HTTP Server:
+
+sh
+Copy code
+sudo dnf install httpd
+Create Repository Directories:
+
+Assume your repositories are stored in /var/www/html/repos/. You can adjust the paths as necessary.
+
+sh
+Copy code
+sudo mkdir -p /var/www/html/repos/BaseOS
+sudo mkdir -p /var/www/html/repos/AppStream
+sudo mkdir -p /var/www/html/repos/epel
+Copy Repository Data:
+
+Copy the contents of your local repositories to these directories. For example:
+
+sh
+Copy code
+sudo cp -r /path/to/local/BaseOS/* /var/www/html/repos/BaseOS/
+sudo cp -r /path/to/local/AppStream/* /var/www/html/repos/AppStream/
+sudo cp -r /path/to/local/epel/* /var/www/html/repos/epel/
+Set Permissions:
+
+Ensure that the Apache HTTP Server has the necessary permissions to read the repository files:
+
+sh
+Copy code
+sudo chown -R apache:apache /var/www/html/repos
+sudo chmod -R 755 /var/www/html/repos
+Create Apache Configuration for Repositories:
+
+Create a configuration file for the repositories, for example, /etc/httpd/conf.d/repos.conf:
+
+sh
+Copy code
+sudo nano /etc/httpd/conf.d/repos.conf
+Add the following content:
+
+apache
+Copy code
+Alias /repos /var/www/html/repos
+
+<Directory /var/www/html/repos>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+Start and Enable Apache HTTP Server:
+
+sh
+Copy code
+sudo systemctl start httpd
+sudo systemctl enable httpd
+Verify Apache HTTP Server is Running:
+
+Check the status of the HTTP server to ensure it is running:
+
+sh
+Copy code
+sudo systemctl status httpd
+Configure Firewall (if applicable):
+
+If you are using a firewall, allow HTTP traffic:
+
+sh
+Copy code
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --reload
+Configure Clients to Use the HTTP Repositories
+On each client (10.10.10.26 and 10.10.10.27), create repository files in /etc/yum.repos.d/ to point to the server’s repositories:
+
+sh
+Copy code
+sudo nano /etc/yum.repos.d/local-repos.repo
+Add the following content:
+
+ini
+Copy code
+[BaseOS]
+name=BaseOS
+baseurl=http://10.10.10.25/repos/BaseOS
+enabled=1
+gpgcheck=0
+
+[AppStream]
+name=AppStream
+baseurl=http://10.10.10.25/repos/AppStream
+enabled=1
+gpgcheck=0
+
+[epel]
+name=EPEL
+baseurl=http://10.10.10.25/repos/epel
+enabled=1
+gpgcheck=0
+Test the Setup
+On each client, verify the repositories are accessible:
+
+sh
+Copy code
+sudo dnf clean all
+sudo dnf repolist
+Install a package from the local repository to ensure it is working:
+
+sh
+Copy code
+sudo dnf install some-package
+By following these steps, you will have set up an HTTP server on your FreeIPA server to serve local repositories and configured the clients to use these repositories. This ensures that your clients can access the necessary packages from the local repositories in an air-gapped network.
+
+Do the repos have to be in /var ? Can I put them in a different directory like "/foo/www/html/repos"?
+ChatGPT
+Yes, you can place the repositories in any directory you prefer, such as /foo/www/html/repos. The key is to ensure that the Apache configuration points to the correct directory and that the permissions are correctly set.
+
+Here's how to do it with the repositories in /foo/www/html/repos:
+
+Step-by-Step Guide to Set Up HTTP Server with Custom Directory
+Install Apache HTTP Server:
+
+sh
+Copy code
+sudo dnf install httpd
+Create Repository Directories:
+
+Create the directories for your repositories:
+
+sh
+Copy code
+sudo mkdir -p /foo/www/html/repos/BaseOS
+sudo mkdir -p /foo/www/html/repos/AppStream
+sudo mkdir -p /foo/www/html/repos/epel
+Copy Repository Data:
+
+Copy the contents of your local repositories to these directories. For example:
+
+sh
+Copy code
+sudo cp -r /path/to/local/BaseOS/* /foo/www/html/repos/BaseOS/
+sudo cp -r /path/to/local/AppStream/* /foo/www/html/repos/AppStream/
+sudo cp -r /path/to/local/epel/* /foo/www/html/repos/epel/
+Set Permissions:
+
+Ensure that the Apache HTTP Server has the necessary permissions to read the repository files:
+
+sh
+Copy code
+sudo chown -R apache:apache /foo/www/html/repos
+sudo chmod -R 755 /foo/www/html/repos
+Create Apache Configuration for Repositories:
+
+Create a configuration file for the repositories, for example, /etc/httpd/conf.d/repos.conf:
+
+sh
+Copy code
+sudo nano /etc/httpd/conf.d/repos.conf
+Add the following content:
+
+apache
+Copy code
+Alias /repos /foo/www/html/repos
+
+<Directory /foo/www/html/repos>
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+Start and Enable Apache HTTP Server:
+
+sh
+Copy code
+sudo systemctl start httpd
+sudo systemctl enable httpd
+Verify Apache HTTP Server is Running:
+
+Check the status of the HTTP server to ensure it is running:
+
+sh
+Copy code
+sudo systemctl status httpd
+Configure Firewall (if applicable):
+
+If you are using a firewall, allow HTTP traffic:
+
+sh
+Copy code
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --reload
+Configure Clients to Use the HTTP Repositories
+On each client (10.10.10.26 and 10.10.10.27), create repository files in /etc/yum.repos.d/ to point to the server’s repositories:
+
+sh
+Copy code
+sudo nano /etc/yum.repos.d/local-repos.repo
+Add the following content:
+
+ini
+Copy code
+[BaseOS]
+name=BaseOS
+baseurl=http://10.10.10.25/repos/BaseOS
+enabled=1
+gpgcheck=0
+
+[AppStream]
+name=AppStream
+baseurl=http://10.10.10.25/repos/AppStream
+enabled=1
+gpgcheck=0
+
+[epel]
+name=EPEL
+baseurl=http://10.10.10.25/repos/epel
+enabled=1
+gpgcheck=0
+Test the Setup
+On each client, verify the repositories are accessible:
+
+sh
+Copy code
+sudo dnf clean all
+sudo dnf repolist
+Install a package from the local repository to ensure it is working:
+
+sh
+Copy code
+sudo dnf install some-package
+By following these steps, you will have set up an HTTP server to serve local repositories from a custom directory and configured the clients to use these repositories. This setup allows your clients to access the necessary packages from the local repositories in an air-gapped network.
