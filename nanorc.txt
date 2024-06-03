@@ -1,0 +1,35 @@
+## Create or edit the file ~/.nanorc and add the following content:
+
+## Enable line numbers
+set linenumbers
+
+## Enable syntax highlighting
+include "/usr/share/nano/*.nanorc"
+
+## Set the background to dark and text to white
+## Unfortunately, nano does not have as extensive color options as vim
+## You can define specific color schemes for different types of files
+
+## Basic example for plain text files
+syntax "default" ".*"
+color brightwhite,black ".*"
+
+## Optional: customize specific file types
+## For example, for C files
+syntax "c" "\.c$"
+color brightwhite,black ".*"
+color brightred,black "//.*"
+color brightgreen,black "'.*'"
+color brightyellow,black "\".*\""
+color cyan,black "[-!%^&*()_+|~=`{}\[\]:\";'<>?,.\/]"
+color magenta,black "\<[A-Za-z_][A-Za-z0-9_]*\>"
+
+## Enable smooth scrolling
+set smooth
+
+## Set tab size
+set tabsize 4
+
+## Enable mouse support
+set mouse
+
