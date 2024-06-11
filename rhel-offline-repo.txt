@@ -1,0 +1,82 @@
+Question: Does one have to have a registered RHEL 9 machine to
+download repositories?
+
+Yes, that is correct. To set up a local mirror of the RHEL 9 repositories, 
+you need access to the official Red Hat repositories, which require a 
+registered RHEL system connected to the internet. Here’s a step-by-step 
+guide on how to achieve this:
+
+Register a RHEL 9 Machine:
+
+Connect a RHEL 9 machine to the internet.
+Register the system with your Red Hat subscription using the following command:
+
+  # subscription-manager register --username <your-username> --password <your-password>
+
+Attach the Subscription:
+
+Attach the subscription to the system:
+
+  # subscription-manager attach --auto
+
+Enable the Required Repositories:
+
+List all available repositories:
+
+  # subscription-manager repos --list
+
+Enable the repositories you need. For example:
+
+  # subscription-manager repos --enable=rhel-9-for-x86_64-baseos-rpms
+  # subscription-manager repos --enable=rhel-9-for-x86_64-appstream-rpms
+
+Sync the Repositories:
+
+Use reposync to download the repositories to a local directory. Install 
+dnf-utils if it is not already installed:
+
+  # dnf install dnf-utils
+
+Create a directory to store the repository data:
+
+  # mkdir -p /path/to/local/repo
+
+Sync the repositories:
+
+  # reposync --repoid=rhel-9-for-x86_64-baseos-rpms --repoid=rhel-9-for-x86_64-appstream-rpms --download-metadata --download_path=/path/to/local/repo
+
+Create the Local Repository Metadata:
+
+Generate the metadata for your local repository:
+
+  # createrepo /path/to/local/repo
+
+Set Up Local Repositories on the Air-Gapped Network:
+
+Copy the downloaded repository data to your air-gapped network.
+
+Create a repository configuration file on each machine pointing to the local repository. 
+For example, create a file at /etc/yum.repos.d/local.repo with the following content:
+
+[local-baseos]
+name=Local RHEL 9 BaseOS
+baseurl=file:///path/to/local/repo/rhel-9-for-x86_64-baseos-rpms
+enabled=1
+gpgcheck=1
+
+[local-appstream]
+name=Local RHEL 9 AppStream
+baseurl=file:///path/to/local/repo/rhel-9-for-x86_64-appstream-rpms
+enabled=1
+gpgcheck=1
+
+Install the GPG Key:
+
+Download the GPG key from the Red Hat Customer Portal and install it on the 
+air-gapped systems. For example:
+
+  # rpm --import /path/to/RPM-GPG-KEY-redhat-release
+
+After following these steps, your air-gapped systems should be able to use dnf 
+to update and install packages from your local mirror.
+
