@@ -1,0 +1,217 @@
+Server Setup (AlmaLinux 9)
+
+Install Required Packages
+
+sudo dnf install -y krb5-server krb5-libs krb5-workstation sssd sssd-krb5 sssd-krb5-common
+
+Configure Kerberos
+
+Edit the Kerberos configuration file /etc/krb5.conf:
+
+[libdefaults]
+    default_realm = EXAMPLE.COM
+    dns_lookup_realm = false
+    dns_lookup_kdc = false
+
+[realms]
+    EXAMPLE.COM = {
+        kdc = kerberos.example.com
+        admin_server = kerberos.example.com
+    }
+
+[domain_realm]
+    .example.com = EXAMPLE.COM
+    example.com = EXAMPLE.COM
+
+Configure KDC
+
+Edit /var/kerberos/krb5kdc/kdc.conf:
+
+[kdcdefaults]
+    kdc_ports = 88
+    kdc_tcp_ports = 88
+
+[realms]
+    EXAMPLE.COM = {
+        # paths to database and log files
+        database_name = /var/kerberos/krb5kdc/principal
+        admin_keytab = /var/kerberos/krb5kdc/kadm5.keytab
+        acl_file = /var/kerberos/krb5kdc/kadm5.acl
+        key_stash_file = /var/kerberos/krb5kdc/.k5.EXAMPLE.COM
+        kdc_ports = 88
+        kdc_tcp_ports = 88
+        max_life = 10h 0m 0s
+        max_renewable_life = 7d 0h 0m 0s
+    }
+
+Configure Kadmin
+
+Edit /var/kerberos/krb5kdc/kadm5.acl:
+
+*/admin@EXAMPLE.COM *
+
+Create KDC Database
+
+sudo kdb5_util create -s
+
+Add Admin Principal
+
+sudo kadmin.local -q "addprinc admin/admin"
+Set the password when prompted.
+
+Start and Enable Kerberos Services
+
+sudo systemctl start krb5kdc
+sudo systemctl start kadmin
+sudo systemctl enable krb5kdc
+sudo systemctl enable kadmin
+Configure SSSD
+
+Edit /etc/sssd/sssd.conf:
+
+[sssd]
+config_file_version = 2
+services = nss, pam
+domains = EXAMPLE.COM
+
+[domain/EXAMPLE.COM]
+auth_provider = krb5
+chpass_provider = krb5
+krb5_server = kerberos.example.com
+krb5_realm = EXAMPLE.COM
+krb5_kpasswd = kerberos.example.com
+
+Set appropriate permissions:
+
+sudo chmod 600 /etc/sssd/sssd.conf
+
+Start and Enable SSSD
+
+sudo systemctl start sssd
+sudo systemctl enable sssd
+
+**************************
+
+Client Setup (CentOS 7)
+
+Install Required Packages
+
+sudo yum install -y krb5-workstation sssd sssd-krb5 sssd-krb5-common
+
+Configure Kerberos
+
+Edit the Kerberos configuration file /etc/krb5.conf:
+
+[libdefaults]
+    default_realm = EXAMPLE.COM
+    dns_lookup_realm = false
+    dns_lookup_kdc = false
+
+[realms]
+    EXAMPLE.COM = {
+        kdc = kerberos.example.com
+        admin_server = kerberos.example.com
+    }
+
+[domain_realm]
+    .example.com = EXAMPLE.COM
+    example.com = EXAMPLE.COM
+Configure SSSD
+
+Edit /etc/sssd/sssd.conf:
+
+[sssd]
+config_file_version = 2
+services = nss, pam
+domains = EXAMPLE.COM
+
+[domain/EXAMPLE.COM]
+auth_provider = krb5
+chpass_provider = krb5
+krb5_server = kerberos.example.com
+krb5_realm = EXAMPLE.COM
+krb5_kpasswd = kerberos.example.com
+
+Set appropriate permissions:
+
+sudo chmod 600 /etc/sssd/sssd.conf
+
+Start and Enable SSSD
+
+sudo systemctl start sssd
+sudo systemctl enable sssd
+
+Testing the Setup
+
+On the Server
+
+Create a test user principal:
+
+sudo kadmin.local -q "addprinc testuser"
+
+Set the password when prompted.
+
+On the Client
+
+Obtain a Kerberos ticket:
+
+kinit testuser
+Verify the ticket:
+
+klist
+
+You should see the ticket details if everything is configured correctly.
+
+This setup allows you to authenticate clients against the Kerberos server using SSSD. Ensure DNS is correctly configured for the domain so that the client can resolve the server's hostname.
+
+-- Do I just add users the normal way on the server?
+
+ChatGPT
+
+Yes, you can add users the normal way on the server. However, for users to authenticate using Kerberos, you need to ensure that their Kerberos principals are created. Here are the steps to add a user and create a corresponding Kerberos principal:
+
+Adding Users on the Server
+
+Add the User to the System
+
+You can add a user using the standard user creation command:
+
+sudo useradd username
+sudo passwd username
+
+This command adds the user to the local system. The passwd command sets the local system password, which is not necessarily the Kerberos password.
+
+Create a Kerberos Principal for the User
+
+Use the kadmin.local command to add a Kerberos principal for the user:
+
+sudo kadmin.local -q "addprinc username"
+
+You will be prompted to set a password for the Kerberos principal.
+
+Ensure Home Directory and Permissions
+
+Make sure the user's home directory is created and has the correct permissions. This step is typically handled by the useradd command, but you can verify it:
+
+sudo mkdir -p /home/username
+sudo chown username:username /home/username
+sudo chmod 700 /home/username
+
+Testing User Authentication
+
+On the Client
+
+Ensure that the client can obtain a Kerberos ticket for the new user:
+
+kinit username
+
+Enter the password you set when creating the Kerberos principal. Verify the ticket with:
+
+klist
+
+Logging In
+
+You should be able to log in to the client machine using the new user's credentials. The system will use SSSD and Kerberos to authenticate the user.
+
+ssh username@client_machine
+
