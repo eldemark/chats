@@ -1,0 +1,635 @@
+What does the Linux kernel page_cache_release() function do?
+
+The page_cache_release() function in the Linux kernel is used to release a 
+page from the page cache. When a page is no longer needed, this function is
+called to decrease the reference count of the page, potentially freeing it 
+if the count drops to zero. The page cache is a critical component in the 
+Linux kernel that stores pages of files in memory to reduce disk I/O 
+operations and improve system performance.
+
+Here's a more detailed explanation of what happens in page_cache_release():
+
+Decrease Reference Count: The function decrements the reference count of 
+the page. This count indicates how many references to the page currently exist.
+
+Free the Page: If the reference count drops to zero, indicating that no one
+else is using the page, the page can be freed. This involves removing it 
+from the page cache and making its memory available for other uses.
+
+The process of releasing a page helps manage memory efficiently and ensures
+that the system does not run out of memory by holding onto pages that 
+are no longer in use.
+
+In code, page_cache_release() is often defined as a macro that calls 
+put_page(), which handles the actual reference counting and potential
+freeing of the page.
+
+Here is an example of how it might be defined in the kernel source:
+
+#define page_cache_release(page) put_page(page)
+
+And the put_page() function might look something like this:
+
+void put_page(struct page *page)
+{
+    if (put_page_testzero(page))
+        __put_page(page);
+}
+
+The put_page_testzero() function decrements the reference count and returns
+true if it drops to zero, triggering the call to __put_page() which 
+performs the cleanup and freeing of the page.
+
+Overall, page_cache_release() is a crucial function for memory management
+in the Linux kernel, ensuring efficient use of the page cache and freeing
+up resources when they are no longer needed.
+
+I'm compiling some kernel driver code that calls that function. It compiles 
+on kernel 3.10.0, but on kernel 4.18.0, it says it can't find that function.
+Has the function been renamed?
+
+Yes, the page_cache_release() function has been renamed in more recent 
+versions of the Linux kernel. Starting from kernel version 4.18, the function
+has been replaced with put_page(). The underlying functionality remains the 
+same, but the naming has been standardized.
+
+In kernel 3.10.0, you would use page_cache_release() like this:
+
+page_cache_release(page);
+
+In kernel 4.18.0 and later, you should use put_page() instead:
+
+put_page(page);
+
+To ensure your driver code is compatible with both versions, you can use a 
+conditional compilation directive to check the kernel version and call 
+the appropriate function:
+
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
+#define PAGE_CACHE_RELEASE(page) page_cache_release(page)
+#else
+#define PAGE_CACHE_RELEASE(page) put_page(page)
+#endif
+
+// Usage
+PAGE_CACHE_RELEASE(page);
+
+This way, your code will compile correctly on both older and newer kernel versions.
+
+I'm seeing the same thing for function pci_enable_msix(). Has this been renamed?
+
+Yes, the pci_enable_msix() function has also undergone changes in newer kernel 
+versions. In Linux kernel version 4.8 and later, pci_enable_msix() has been replaced
+by pci_enable_msix_exact() and pci_enable_msi_range(). These changes were made to 
+provide more precise control over the number of MSI-X vectors 
+requested and allocated.
+
+Here’s how you can adapt your code:
+
+For Kernel 3.10.0
+
+int ret = pci_enable_msix(pdev, entries, nvec);
+
+For Kernel 4.18.0 and Later
+
+You should use pci_enable_msix_exact() or pci_enable_msi_range().
+
+pci_enable_msix_exact(): Requests and allocates exactly the number of MSI-X 
+vectors specified.
+
+pci_enable_msi_range(): Requests a range of MSI-X vectors, which can be useful
+if the exact number is not critical.
+
+Here’s an example of using pci_enable_msix_exact():
+
+int ret = pci_enable_msix_exact(pdev, entries, nvec);
+
+Alternatively, using pci_enable_msi_range():
+
+int ret = pci_enable_msi_range(pdev, entries, minvec, nvec);
+
+Conditional Compilation
+
+To handle both older and newer kernel versions, you can use conditional
+compilation directives:
+
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+#define PCI_ENABLE_MSIX(pdev, entries, nvec) pci_enable_msix(pdev, entries, nvec)
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
+#define PCI_ENABLE_MSIX(pdev, entries, nvec) pci_enable_msix_exact(pdev, entries, nvec)
+#else
+#define PCI_ENABLE_MSIX(pdev, entries, minvec, nvec) pci_enable_msi_range(pdev, entries, minvec, nvec)
+#endif
+
+// Usage
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
+int ret = PCI_ENABLE_MSIX(pdev, entries, nvec);
+#else
+int ret = PCI_ENABLE_MSIX(pdev, entries, minvec, nvec);
+#endif
+
+This approach allows your code to compile and work correctly 
+across different kernel versions.
+
+Now the same for function pci_enable_msi_block().
+
+The pci_enable_msi_block() function has been deprecated and replaced with 
+pci_enable_msi_range() in newer versions of the Linux kernel. The newer 
+function allows for more flexibility by enabling a range of MSI interrupts.
+
+Here’s how you can adapt your code:
+
+For Kernel 3.10.0
+
+int ret = pci_enable_msi_block(pdev, numvec);
+
+For Kernel 4.18.0 and Later
+
+Use pci_enable_msi_range():
+
+int ret = pci_enable_msi_range(pdev, minvec, numvec);
+
+Conditional Compilation
+
+To handle both older and newer kernel versions, you can use conditional 
+compilation directives:
+
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+#define PCI_ENABLE_MSI_BLOCK(pdev, numvec) pci_enable_msi_block(pdev, numvec)
+#else
+#define PCI_ENABLE_MSI_BLOCK(pdev, minvec, numvec) pci_enable_msi_range(pdev, minvec, numvec)
+#endif
+
+// Usage
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+int ret = PCI_ENABLE_MSI_BLOCK(pdev, numvec);
+#else
+int ret = PCI_ENABLE_MSI_BLOCK(pdev, minvec, numvec);
+#endif
+
+This approach ensures compatibility across different kernel versions, 
+allowing your code to compile and function correctly whether it is using 
+the older pci_enable_msi_block() or the newer pci_enable_msi_range().
+
+What would be the value of "minvec"?
+
+The value of minvec in the pci_enable_msi_range() function represents the 
+minimum number of MSI vectors that the driver is willing to accept. This 
+allows the function to request a range of vectors and ensures that it 
+receives at least the specified minimum number, even if it cannot get 
+the maximum requested (numvec).
+
+Here's how to determine the value for minvec:
+
+If you require a specific number of vectors and cannot operate with fewer,
+set minvec to the same value as numvec.
+If your driver can operate with a varying number of vectors, set minvec
+to the minimum number of vectors your driver needs to function correctly.
+
+Example Values
+
+Exact Requirement: If you need exactly 4 vectors:
+
+int minvec = 4;
+int numvec = 4;
+
+Flexible Requirement: If you prefer 8 vectors but can operate with at least 4:
+
+int minvec = 4;
+int numvec = 8;
+
+Usage Example
+
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+#define PCI_ENABLE_MSI_BLOCK(pdev, numvec) pci_enable_msi_block(pdev, numvec)
+#else
+#define PCI_ENABLE_MSI_BLOCK(pdev, minvec, numvec) pci_enable_msi_range(pdev, minvec, numvec)
+#endif
+
+// Usage
+int minvec = 4;
+int numvec = 8;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+int ret = PCI_ENABLE_MSI_BLOCK(pdev, numvec);
+#else
+int ret = PCI_ENABLE_MSI_BLOCK(pdev, minvec, numvec);
+#endif
+
+This setup allows your code to adapt to different kernel versions while 
+specifying the necessary range of MSI vectors.
+
+Okay, one more function: init_timer().
+
+The init_timer() function has been deprecated in favor of timer_setup() 
+in newer versions of the Linux kernel. The timer_setup() function 
+provides a more flexible and robust way to initialize timers.
+
+For Kernel 3.10.0
+
+You would use init_timer() like this:
+
+struct timer_list my_timer;
+init_timer(&my_timer);
+my_timer.function = my_timer_function;
+my_timer.data = my_timer_data;
+my_timer.expires = jiffies + HZ;
+add_timer(&my_timer);
+
+For Kernel 4.14.0 and Later
+
+You should use timer_setup():
+
+struct timer_list my_timer;
+timer_setup(&my_timer, my_timer_function, 0);
+my_timer.expires = jiffies + HZ;
+add_timer(&my_timer);
+
+Conditional Compilation
+
+To handle both older and newer kernel versions, you can use 
+conditional compilation directives:
+
+#include <linux/version.h>
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+#define INIT_TIMER(timer, func, data) \
+    do { \
+        init_timer(timer); \
+        (timer)->function = func; \
+        (timer)->data = data; \
+    } while (0)
+#else
+#define INIT_TIMER(timer, func, data) \
+    do { \
+        timer_setup(timer, func, 0); \
+    } while (0)
+#endif
+
+// Timer callback function
+
+void my_timer_function(struct timer_list *t);
+
+// Usage
+struct timer_list my_timer;
+INIT_TIMER(&my_timer, my_timer_function, 0);
+my_timer.expires = jiffies + HZ;
+add_timer(&my_timer);
+
+This approach ensures that your code will compile and function correctly across 
+different kernel versions by using the appropriate timer initialization function.
+
+Here's the complete example for a timer callback function:
+
+#include <linux/timer.h>
+#include <linux/jiffies.h>
+#include <linux/version.h>
+
+void my_timer_function(struct timer_list *t)
+{
+    // Timer callback code here
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+#define INIT_TIMER(timer, func, data) \
+    do { \
+        init_timer(timer); \
+        (timer)->function = func; \
+        (timer)->data = data; \
+    } while (0)
+#else
+#define INIT_TIMER(timer, func, data) \
+    do { \
+        timer_setup(timer, func, 0); \
+    } while (0)
+#endif
+
+// Usage
+struct timer_list my_timer;
+INIT_TIMER(&my_timer, my_timer_function, 0);
+my_timer.expires = jiffies + HZ;
+add_timer(&my_timer);
+
+This code ensures compatibility with both older and newer Linux kernel 
+versions, allowing you to initialize timers correctly.
+
+Those were the functions that changed names. Now there's another function that 
+has the same name, but a different number of arguments, called get_user_pages().
+Could you explain the changes from 3.10.0 to 4.18.0 for that one?
+
+The get_user_pages() function has undergone several changes between kernel versions 
+3.10.0 and 4.18.0, with the most significant change being in the number and type of 
+arguments it takes. These changes reflect improvements in security, 
+flexibility, and functionality.
+
+Kernel 3.10.0
+
+In kernel version 3.10.0, get_user_pages() had the following signature:
+
+int get_user_pages(struct task_struct *tsk, struct mm_struct *mm,
+                   unsigned long start, int nr_pages, int write, int force,
+                   struct page **pages, struct vm_area_struct **vmas);
+Arguments:
+
+tsk: The task for which pages are being retrieved.
+mm: The memory descriptor.
+start: The starting address.
+nr_pages: The number of pages to retrieve.
+write: A flag indicating if the pages are to be written to.
+force: A flag to force access even if the task does not have permission.
+pages: An array to store the page structures.
+vmas: An array to store the VMA structures.
+
+Kernel 4.18.0
+
+In kernel version 4.18.0, the function signature was changed to improve its 
+flexibility and to address various security concerns. The new signature is:
+
+long get_user_pages(unsigned long start, unsigned long nr_pages,
+                    unsigned int gup_flags, struct page **pages,
+                    struct vm_area_struct **vmas);
+Arguments:
+
+start: The starting address.
+nr_pages: The number of pages to retrieve.
+gup_flags: Flags to control the behavior of get_user_pages(). This can include 
+    flags such as FOLL_WRITE (to indicate write access), FOLL_FORCE 
+    (to force access), etc.
+pages: An array to store the page structures.
+vmas: An array to store the VMA structures (can be NULL if not needed).
+
+The tsk and mm parameters were removed, and the functionality they provided is 
+now managed internally. The gup_flags parameter provides more granular 
+control over the behavior of the function.
+
+Example Adaptation
+
+Here’s an example of how to adapt code from kernel 3.10.0 to kernel 4.18.0:
+
+Kernel 3.10.0 Code
+
+struct task_struct *tsk = current;
+struct mm_struct *mm = current->mm;
+unsigned long start = /* starting address */;
+int nr_pages = /* number of pages */;
+int write = 1;  // for write access
+int force = 0;  // no force
+struct page *pages[nr_pages];
+struct vm_area_struct *vmas[nr_pages];
+
+int ret = get_user_pages(tsk, mm, start, nr_pages, write, force, pages, vmas);
+
+Kernel 4.18.0 Code
+
+unsigned long start = /* starting address */;
+unsigned long nr_pages = /* number of pages */;
+unsigned int gup_flags = FOLL_WRITE;  // for write access, can add more flags if needed
+struct page *pages[nr_pages];
+struct vm_area_struct *vmas[nr_pages];
+
+long ret = get_user_pages(start, nr_pages, gup_flags, pages, vmas);
+
+Conditional Compilation
+
+To ensure compatibility with both versions, you can use conditional compilation:
+
+#include <linux/version.h>
+#include <linux/mm.h>
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+#define GET_USER_PAGES(tsk, mm, start, nr_pages, write, force, pages, vmas) \
+    get_user_pages(tsk, mm, start, nr_pages, write, force, pages, vmas)
+#else
+#define GET_USER_PAGES(start, nr_pages, gup_flags, pages, vmas) \
+    get_user_pages(start, nr_pages, gup_flags, pages, vmas)
+#endif
+
+// Usage
+unsigned long start = /* starting address */;
+unsigned long nr_pages = /* number of pages */;
+struct page *pages[nr_pages];
+struct vm_area_struct *vmas[nr_pages];
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 6, 0)
+struct task_struct *tsk = current;
+struct mm_struct *mm = current->mm;
+int write = 1;  // for write access
+int force = 0;  // no force
+int ret = GET_USER_PAGES(tsk, mm, start, nr_pages, write, force, pages, vmas);
+#else
+unsigned int gup_flags = FOLL_WRITE;  // for write access
+long ret = GET_USER_PAGES(start, nr_pages, gup_flags, pages, vmas);
+#endif
+
+This setup ensures that your code will compile and work correctly across different kernel 
+versions by using the appropriate get_user_pages() function signature.
+
+There's another change which is in the struct 'timer_list'. In 3.10.0 there was a 
+member variable called 'data' but that has changed in 4.18.
+
+Yes, the struct timer_list has undergone changes in recent versions of the Linux kernel.
+Specifically, the data member has been removed, and the way timers are set up and 
+used has been revised to enhance type safety and clarity.
+
+Kernel 3.10.0
+
+In kernel 3.10.0, struct timer_list included a data member which was often used to
+store custom data:
+
+struct timer_list {
+    unsigned long expires;
+    void (*function)(unsigned long);
+    unsigned long data;
+    // other members...
+};
+
+Example usage:
+
+struct timer_list my_timer;
+init_timer(&my_timer);
+my_timer.function = my_timer_function;
+my_timer.data = (unsigned long)my_data;
+my_timer.expires = jiffies + HZ;
+add_timer(&my_timer);
+
+void my_timer_function(unsigned long data) {
+    // Handle timer, with 'data' containing my_data
+}
+
+Kernel 4.18.0
+
+In kernel 4.18.0, the data member has been removed, and the function signature has 
+been changed. The function member now takes a pointer to the timer_list 
+structure itself:
+
+struct timer_list {
+    // other members...
+    void (*function)(struct timer_list *);
+    // other members...
+};
+Example usage with timer_setup():
+
+c
+Copy code
+struct my_data {
+    int value;
+    // other members...
+};
+
+struct my_data my_data_instance;
+struct timer_list my_timer;
+
+void my_timer_function(struct timer_list *t) {
+    struct my_data *data = from_timer(data, t, my_timer);
+    // Handle timer, with 'data' pointing to my_data_instance
+}
+
+timer_setup(&my_timer, my_timer_function, 0);
+my_timer.expires = jiffies + HZ;
+add_timer(&my_timer);
+
+// from_timer macro to convert back to the data structure
+#define from_timer(var, callback_timer, timer_fieldname) \
+    container_of(callback_timer, typeof(*var), timer_fieldname)
+
+Conditional Compilation
+
+To ensure compatibility with both versions, you can use conditional compilation:
+
+#include <linux/version.h>
+#include <linux/timer.h>
+#include <linux/jiffies.h>
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+#define INIT_TIMER(timer, func, data) \
+    do { \
+        init_timer(timer); \
+        (timer)->function = func; \
+        (timer)->data = (unsigned long)data; \
+    } while (0)
+#define TIMER_FUNC_DECL(func) void func(unsigned long data)
+#define TIMER_FUNC_CALL(func, timer) func((timer)->data)
+#else
+#define INIT_TIMER(timer, func, data) \
+    do { \
+        timer_setup(timer, func, 0); \
+        (timer)->data = data; \
+    } while (0)
+#define TIMER_FUNC_DECL(func) void func(struct timer_list *timer)
+#define TIMER_FUNC_CALL(func, timer) func(timer)
+#endif
+
+// Timer callback function
+struct my_data {
+    int value;
+    // other members...
+};
+
+struct my_data my_data_instance;
+struct timer_list my_timer;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
+TIMER_FUNC_DECL(my_timer_function) {
+    struct my_data *data = (struct my_data *)data;
+    // Handle timer, with 'data' pointing to my_data_instance
+}
+#else
+TIMER_FUNC_DECL(my_timer_function) {
+    struct my_data *data = from_timer(data, timer, my_timer);
+    // Handle timer, with 'data' pointing to my_data_instance
+}
+#define from_timer(var, callback_timer, timer_fieldname) \
+    container_of(callback_timer, typeof(*var), timer_fieldname)
+#endif
+
+// Usage
+INIT_TIMER(&my_timer, my_timer_function, &my_data_instance);
+my_timer.expires = jiffies + HZ;
+add_timer(&my_timer);
+
+This setup ensures compatibility with both older and newer kernel versions by 
+handling the differences in the timer_list structure and the timer 
+setup function appropriately.
+
+What would be the size of the custom data? Was that a pointer to something or 
+just sizeof(unsigned long) bytes of data?
+
+In the older versions of the Linux kernel (such as 3.10.0), the data member of the 
+struct timer_list was an unsigned long. This typically means it was used to store 
+either a direct value or a pointer, depending on the use case. The size of this data 
+member is the size of an unsigned long, which is usually the same as the pointer 
+size on the platform (4 bytes on 32-bit systems and 8 bytes on 64-bit systems).
+
+When you use data to store a pointer, it allows the timer callback function 
+to access more complex data structures.
+
+Example in Kernel 3.10.0
+
+When using data to store a pointer:
+
+struct my_data {
+    int value;
+    // other members...
+};
+
+struct my_data my_data_instance;
+
+struct timer_list my_timer;
+init_timer(&my_timer);
+my_timer.function = my_timer_function;
+my_timer.data = (unsigned long)&my_data_instance; // Store a pointer as unsigned long
+my_timer.expires = jiffies + HZ;
+add_timer(&my_timer);
+
+void my_timer_function(unsigned long data) {
+    struct my_data *my_data_ptr = (struct my_data *)data; // Cast back to pointer
+    // Handle timer, with 'my_data_ptr' pointing to 'my_data_instance'
+}
+
+Handling in Kernel 4.18.0
+
+In kernel 4.18.0 and later, the data member has been removed. Instead, you 
+typically store the custom data in the timer_list structure using a 
+container structure.
+
+Example with timer_setup()
+
+struct my_data {
+    int value;
+    struct timer_list my_timer; // Embed the timer_list in your structure
+    // other members...
+};
+
+struct my_data my_data_instance;
+
+void my_timer_function(struct timer_list *t) {
+    struct my_data *my_data_ptr = from_timer(my_data_ptr, t, my_timer);
+    // Handle timer, with 'my_data_ptr' pointing to 'my_data_instance'
+}
+
+// Usage
+timer_setup(&my_data_instance.my_timer, my_timer_function, 0);
+my_data_instance.my_timer.expires = jiffies + HZ;
+add_timer(&my_data_instance.my_timer);
+
+// Define from_timer macro to get container structure
+#define from_timer(var, callback_timer, timer_fieldname) \
+    container_of(callback_timer, typeof(*var), timer_fieldname)
+
+Summary
+In kernel 3.10.0: The data member was an unsigned long that could store either a 
+direct value or a pointer.
+In kernel 4.18.0 and later: The data member is removed. You embed the timer_list within your 
+custom data structure and use the from_timer macro to retrieve the custom data 
+from the timer callback.
+The size of the custom data was sizeof(unsigned long), which is typically the size 
+of a pointer on the platform. The new approach is more type-safe and flexible, 
+allowing direct access to complex data structures without casting.
