@@ -1,0 +1,140 @@
+********************************************************************************
+
+To achieve this setup in your air-gapped network, you will need to 
+integrate Windows and Linux systems to allow single sign-on (SSO) 
+authentication and centralized home directories. 
+Here’s a step-by-step outline to set it up:
+
+1. Set Up Windows Server for Authentication
+Install and Configure Active Directory (AD)
+Install Active Directory Domain Services (AD DS):
+On your Windows Server, open Server Manager.
+Add roles and features, select Active Directory Domain Services, 
+and follow the prompts to install.
+Promote the Server to a Domain Controller:
+After installation, promote the server to a domain controller by creating 
+a new domain.
+Follow the wizard to set up your domain (e.g., example.local).
+
+********************************************************************************
+
+2. Configure Windows Clients
+Join Windows Clients to the Domain:
+On each Windows client, go to System Properties > Computer Name > Change.
+Select Domain and enter your domain name.
+Enter domain admin credentials when prompted.
+
+********************************************************************************
+
+3. Configure Linux Clients for AD Authentication
+Install Necessary Packages
+Install Required Packages on Linux Clients:
+Install realmd, sssd, adcli, samba-common, and krb5-user packages.
+
+bash
+  sudo apt update
+  sudo apt install realmd sssd adcli samba-common krb5-user
+
+Discover and Join AD Domain
+Discover and Join AD Domain:
+
+bash
+  sudo realm discover example.local
+  sudo realm join --user=Administrator example.local
+
+Configure SSSD and PAM
+Configure SSSD for AD Integration:
+
+Edit /etc/sssd/sssd.conf to include your domain configuration:
+
+ini
+  [sssd]
+  services = nss, pam
+  domains = example.local
+
+  [domain/example.local]
+  id_provider = ad
+  access_provider = ad
+
+Ensure proper permissions and restart SSSD:
+
+bash
+  sudo chmod 600 /etc/sssd/sssd.conf
+  sudo systemctl restart sssd
+
+Update PAM Configuration:
+
+Edit /etc/pam.d/common-session to include:
+
+text
+  session required pam_mkhomedir.so skel=/etc/skel/ umask=0022
+
+********************************************************************************
+
+4. Set Up Linux File Server for Home Directories
+Configure NFS Server
+Install and Configure NFS on Linux File Server:
+
+Install NFS server packages:
+
+bash
+  sudo apt update
+  sudo apt install nfs-kernel-server
+
+Configure exports in /etc/exports:
+
+text
+  /home   *(rw,sync,no_subtree_check)
+
+Start and enable NFS server:
+
+bash
+  sudo systemctl start nfs-kernel-server
+  sudo systemctl enable nfs-kernel-server
+
+********************************************************************************
+
+5. Mount NFS Home Directories on Linux Clients
+Configure AutoFS to Mount NFS Home Directories:
+
+Install AutoFS:
+bash
+  sudo apt install autofs
+
+Configure AutoFS maps in /etc/auto.master:
+text
+  /home /etc/auto.home
+
+Create /etc/auto.home with the following content:
+text
+  * -fstype=nfs,rw,soft,intr nfs-server:/home/&
+
+Restart AutoFS:
+bash
+  sudo systemctl restart autofs
+
+********************************************************************************
+
+Summary
+Windows Server:
+
+Install and configure Active Directory Domain Services (AD DS).
+Promote the server to a domain controller and set up a domain.
+Windows Clients:
+
+Join all Windows clients to the domain.
+Linux Clients:
+
+Install necessary packages for AD integration (realmd, sssd, etc.).
+Join the AD domain using realm.
+Configure sssd and pam for authentication.
+Set up AutoFS to mount NFS home directories from the Linux file server.
+Linux File Server:
+
+Install and configure NFS server.
+Export home directories for NFS.
+
+This configuration ensures that users can authenticate using AD 
+credentials on both Windows and Linux systems, and have 
+consistent home directories on Linux clients.
+
