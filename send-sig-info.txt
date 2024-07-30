@@ -1,0 +1,83 @@
+********************************************************************************
+
+I'm compiling a Linux kernel module on kernel 4.18.0. The kernel module 
+compiles without error on kernel 3.10.0, but on 4.18.0 I'm getting an error 
+for function "send_sig_info()" which says argument 2 has an incompatible 
+pointer type. How can I fix the code to compile on kernel 4.18.0?
+
+ChatGPT
+
+The issue you're encountering is likely due to changes in the function 
+signature of send_sig_info() between kernel versions 3.10.0 and 4.18.0. 
+In kernel 4.18.0, the function send_sig_info() has been modified, 
+which might be causing the incompatible pointer type error.
+
+Here is a comparison of the function signature changes:
+
+********************************************************************************
+
+Kernel 3.10.0:
+
+  int send_sig_info(int sig, struct siginfo *info, struct task_struct *p);
+
+********************************************************************************
+
+Kernel 4.18.0:
+
+int send_sig_info(int sig, struct kernel_siginfo *info, struct task_struct *p);
+
+The difference is in the type of the second argument, which changed from struct
+siginfo to struct kernel_siginfo.
+
+To fix the code for kernel 4.18.0, you need to ensure that you're using struct
+kernel_siginfo instead of struct siginfo when calling send_sig_info().
+
+Here's how you can update your code:
+
+Include the appropriate header: Make sure you include the correct header 
+file for struct kernel_siginfo.
+
+#include <linux/signal.h>
+
+Use struct kernel_siginfo: Change the type of the signal info structure 
+from struct siginfo to struct kernel_siginfo.
+
+Initialize the struct kernel_siginfo: Properly initialize the struct 
+kernel_siginfo structure before using it.
+
+Here is an example of how you can modify your code:
+
+********************************************************************************
+
+Original Code for Kernel 3.10.0:
+
+#include <linux/signal.h>
+
+void send_signal_example(struct task_struct *task) {
+    struct siginfo info;
+    memset(&info, 0, sizeof(struct siginfo));
+    info.si_signo = SIGUSR1;
+
+    send_sig_info(SIGUSR1, &info, task);
+}
+
+********************************************************************************
+
+Updated Code for Kernel 4.18.0:
+
+#include <linux/signal.h>
+
+void send_signal_example(struct task_struct *task) {
+    struct kernel_siginfo info;
+    memset(&info, 0, sizeof(struct kernel_siginfo));
+    info.si_signo = SIGUSR1;
+
+    send_sig_info(SIGUSR1, &info, task);
+}
+
+********************************************************************************
+
+By making these changes, your code should compile successfully on kernel 4.18.0 
+without the incompatible pointer type error.
+
+If you have any more questions or need further assistance, feel free to ask!
